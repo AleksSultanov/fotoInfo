@@ -12,6 +12,20 @@ L_DISABLE_3D = false;
 
 LOADFOTO = true;
 
+/*Дополнительное кодирование файлов */
+function urlDopEncode(val) {
+  return val.replace("#", "%23");
+}
+
+/*Загрузка фото в отложенном режиме */
+function showfoto(key) {
+  const cimg = document.getElementById("foto_" + key);
+  const cbtn = document.getElementById("btnloadfoto_" + key);
+  let val = urlDopEncode(resultList[key]["file"]);
+  cimg.src = val;
+  cbtn.style.visibility = "hidden";
+}
+
 /*Иконка для точки */
 
 function getIcon(path) {
@@ -44,7 +58,14 @@ function pointadd(lat, lon, path, key) {
     '<div class="text_link"><span>На картах:</span><br><nobr>' +
     urls +
     "</nobr></div>";
-  var blockimg = '<div class="text_link">' + path + "</div>";
+  var blockimg =
+    '<button  id="btnloadfoto_' +
+    key +
+    '" onClick="showfoto(' +
+    key +
+    ')"><div class="text_link">Загрузить фото</div></button> <img class="foto" id="foto_' +
+    key +
+    '" src="" </img>';
   if (LOADFOTO) {
     blockimg =
       '<img class="foto" src="file:/' + path + '" alt="' + path + '" </img>';
@@ -54,7 +75,9 @@ function pointadd(lat, lon, path, key) {
     path +
     '" target = "_blank">Просмотр</a></div>';
   var html_ = $(
-    '<div class="boxFoto" id="html_' +
+    '<div onload="showfoto(' +
+      key +
+      ')"  class="boxFoto" id="html_' +
       key +
       '" >' +
       blockimg +

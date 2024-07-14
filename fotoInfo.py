@@ -8,7 +8,7 @@ import piexif
 import pillow_heif
 from datetime import datetime
 import time
-
+import shutil
 
 FILE_JPG  =  ['JPEG','JPG']
 FILE_HEIC =  ['HEIC']
@@ -238,6 +238,11 @@ def parseGpsData(d):
 def viewbrouser(d):    
    return d.get("file_path")[-4::].upper().lstrip('.') in FILE_JPG
 
+def copylog(fileSrc,fileDst):
+   prinLog(f'Копируем {fileSrc} в {fileDst}') 
+   shutil.copy(fileSrc,fileDst)    
+
+
 
 
    
@@ -247,16 +252,16 @@ startDir = os.getcwd()
 listfile = []
 
 startDir = 'e:\\foto'
-resultDir = 'result'
+resultDir = os.path.join(startDir,'FotoInfo')
 resultDirRep = os.path.join(resultDir,'Rep')
+resultDirResult = os.path.join(resultDir,'Result')
 fileData = 'result.json' 
 fileScript = 'resultMap.js' 
 
-if not os.path.isdir(resultDir) :
-  os.mkdir(resultDir)
-
-if not os.path.isdir(resultDirRep) :
-  os.mkdir(resultDirRep)
+for tmpDir in [resultDir,resultDirRep,resultDirResult]:
+  if not os.path.isdir(tmpDir):
+    prinLog(f'Создаем каталог {tmpDir}') 
+    os.mkdir(tmpDir)
 
 
 # Сбор информации и сохраняем в файлы
@@ -269,9 +274,9 @@ dur_time = round(finish_time -  start_time,2)
 
 prinLog(f'Время выполнения сканирования {dur_time} сек')    
 
-pathfiledata =  os.path.join(resultDir,fileData)
+pathfiledata =  os.path.join(resultDirResult,fileData)
 saveDataJson(pathfiledata,listfile)
-tmpFile =  os.path.join(resultDir,"result.csv")
+tmpFile =  os.path.join(resultDirResult,"result.csv")
 saveDataCsv(tmpFile, listfile, CSV_ATTR)
 
 #Чтение из файла, для анализа
@@ -302,8 +307,32 @@ prinLog(f'Формирование данных для карты')
 listGpsData = list(map(lambda x: parseGpsData(x), filter(lambda x: parseGpsData(x) and viewbrouser(x)
  ,listfile)))
 prinLog(f'Кол-во фото с координатами {len(listGpsData)}') 
-tmpFile =  os.path.join(resultDir,fileScript)
-saveDataJsonJs(tmpFile, listGpsData)                  
+tmpFile =  os.path.join(resultDirResult,fileScript)
+saveDataJsonJs(tmpFile, listGpsData)  
+
+#Копируем файлы для запуска карты в resultDir
+for sourceDir in ['js','src','styles']:
+  tmpDir = os.path.join(resultDir,sourceDir)
+  if not os.path.isdir(tmpDir):
+    prinLog(f'Создаем каталог {tmpDir}') 
+    os.mkdir(tmpDir)
+
+fileSrc = os.path.join('js','editMappUtl.js')
+fileDst = os.path.join(resultDir,'js')
+copylog(fileSrc,fileDst)
+fileSrc = os.path.join('js','map.js')
+copylog(fileSrc,fileDst)
+
+fileSrc = os.path.join('src','foto32.png')
+fileDst = os.path.join(resultDir,'src')
+copylog(fileSrc,fileDst)
+
+fileSrc = os.path.join('styles','styles.css')
+fileDst = os.path.join(resultDir,'styles')
+copylog(fileSrc,fileDst)
+
+fileSrc = os.path.join('.','map.html')
+copylog(fileSrc,resultDir)
 
 
 finish_time = time.time()       
