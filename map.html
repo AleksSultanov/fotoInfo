@@ -39,6 +39,7 @@
     </div>
     <script type="text/javascript">
         let i = 0;
+        LOADFOTO = false;
         for (key in resultList) {
             i += 1;
             if (i === 1) {
@@ -53,9 +54,6 @@
                     urlDopEncode(resultList[key]["file"]),
                     key
                 );
-            }
-            if (i > 500) {
-                LOADFOTO = false;
             }
         }
     </script>

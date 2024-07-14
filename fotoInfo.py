@@ -238,20 +238,22 @@ def parseGpsData(d):
 def viewbrouser(d):    
    return d.get("file_path")[-4::].upper().lstrip('.') in FILE_JPG
 
+def pathDelStartDir(d,startDir):  
+   result = d
+   tmpPath = d.get("file")  
+   result["file"] = tmpPath.replace(startDir,'..')
+   return result
+
 def copylog(fileSrc,fileDst):
    prinLog(f'Копируем {fileSrc} в {fileDst}') 
    shutil.copy(fileSrc,fileDst)    
 
 
-
-
-   
-
-
 startDir = os.getcwd()
 listfile = []
 
-startDir = 'e:\\foto'
+if len(sys.argv) > 0 :
+   startDir = sys.argv[1]
 resultDir = os.path.join(startDir,'FotoInfo')
 resultDirRep = os.path.join(resultDir,'Rep')
 resultDirResult = os.path.join(resultDir,'Result')
@@ -306,6 +308,8 @@ saveDataCsvl(tmpFile, repList, ['model','ISO','cnt'])
 prinLog(f'Формирование данных для карты') 
 listGpsData = list(map(lambda x: parseGpsData(x), filter(lambda x: parseGpsData(x) and viewbrouser(x)
  ,listfile)))
+listGpsData = list(map(lambda x: pathDelStartDir(x,startDir), listGpsData))
+
 prinLog(f'Кол-во фото с координатами {len(listGpsData)}') 
 tmpFile =  os.path.join(resultDirResult,fileScript)
 saveDataJsonJs(tmpFile, listGpsData)  

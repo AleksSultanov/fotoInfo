@@ -63,7 +63,7 @@ function pointadd(lat, lon, path, key) {
     key +
     '" onClick="showfoto(' +
     key +
-    ')"><div class="text_link">Загрузить фото</div></button> <img class="foto" id="foto_' +
+    ')"><div class="text_link">Показать фото</div></button> <img class="foto" id="foto_' +
     key +
     '" src="" </img>';
   if (LOADFOTO) {
@@ -73,17 +73,17 @@ function pointadd(lat, lon, path, key) {
   var blockfile =
     '<div class="foto_link"><a href = "' +
     path +
-    '" target = "_blank">Просмотр</a></div>';
+    '" target = "_blank">Просмор в полном размере</a></div>';
   var html_ = $(
-    '<div onload="showfoto(' +
+    '<html><body  onload="showfoto(' +
       key +
-      ')"  class="boxFoto" id="html_' +
+      ')"><div class="boxFoto" id="html_' +
       key +
       '" >' +
       blockimg +
       blockfile +
       blockurl +
-      "</div>"
+      "</div></body></html>"
   )[0];
   popup_.setContent(html_);
   marker_.bindPopup(popup_);
