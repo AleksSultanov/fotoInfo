@@ -95,7 +95,9 @@ function setFeature_groups() {
   var overlays = {};
   if (typeof maptracks !== "undefined") {
     for (key in maptracks) {
+      // Группа
       var fg = L.featureGroup({}).addTo(visiomap);
+      //  Трек
       var track = maptracks[key]["track"];
       var track_line = L.polyline(track["location"], {
         bubblingMouseEvents: true,
@@ -114,6 +116,76 @@ function setFeature_groups() {
         stroke: true,
         weight: track["weight"],
       }).addTo(fg);
+      // Маркеры
+      var markers = maptracks[key]["markers"];
+      if (typeof markers !== "undefined") {
+        for (mkey in markers) {
+          if (mkey === "circlemarkers") {
+            var points = markers[mkey]["points"];
+            var i = 0;
+            for (p in points) {
+              var circle_marker = L.circleMarker(points[p]["location"], {
+                bubblingMouseEvents: true,
+                color: markers[mkey]["color"],
+                dashArray: null,
+                dashOffset: null,
+                fill: true,
+                fillColor: markers[mkey]["fill_color"],
+                fillOpacity: markers[mkey]["fill_opacity"],
+                fillRule: "evenodd",
+                lineCap: "round",
+                lineJoin: "round",
+                opacity: 1.0,
+                radius: markers[mkey]["radius"],
+                stroke: true,
+                weight: 3,
+              }).addTo(fg);
+              var cmpopup = L.popup({ maxWidth: "100%" });
+              i += 1;
+              var htmlPop = $(
+                `<div id="html_` +
+                  i +
+                  `" style="width: 100.0%; height: 100.0%;">` +
+                  points[p]["popup"] +
+                  `</div>`
+              )[0];
+              cmpopup.setContent(htmlPop);
+              circle_marker.bindPopup(cmpopup);
+            }
+          }
+          if (mkey === "markers") {
+            var points = markers[mkey]["points"];
+            var i = 0;
+            for (p in points) {
+              var marker = L.marker(points[p]["location"], {}).addTo(fg);
+              var icon = L.AwesomeMarkers.icon({
+                extraClasses: "fa-rotate-0",
+                icon: markers[mkey]["icon"],
+                iconAnchor: markers[mkey]["icon_anchor"],
+                iconColor: markers[mkey]["icon_color"],
+                iconSize: markers[mkey]["icon_size"],
+                markerColor: markers[mkey]["color"],
+                prefix: markers[mkey]["prefix"],
+                shadowSize: markers[mkey]["shadow_size"],
+              });
+              marker.setIcon(icon);
+
+              var cmpopup = L.popup({ maxWidth: "100%" });
+              i += 1;
+              var htmlPop = $(
+                `<div id="html_` +
+                  i +
+                  `" style="width: 100.0%; height: 100.0%;">` +
+                  points[p]["popup"] +
+                  `</div>`
+              )[0];
+              cmpopup.setContent(htmlPop);
+              marker.bindPopup(cmpopup);
+            }
+          }
+        }
+      }
+
       overlays[maptracks[key]["caption"]] = fg;
     }
   }
@@ -165,9 +237,9 @@ function visiomapadd(lat, lon, path, iconpath, mapId) {
   var layer_control = {
     // Панель управления слоями из layers.js
     base_layers: {
-      "OpenStreet Map": visiomaplayerOSN,
+      OpenStreet: visiomaplayerOSN,
       CyclOSM: visiomaplayerCylosm,
-      "Google Maps": visiomaplayerGoogle,
+      Google: visiomaplayerGoogle,
     },
     overlays: {},
   };
