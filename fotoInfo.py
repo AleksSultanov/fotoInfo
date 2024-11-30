@@ -9,6 +9,7 @@ import pillow_heif
 from datetime import datetime
 import time
 import shutil
+from functools import reduce
 
 FILE_JPG  =  ['JPEG','JPG']
 FILE_HEIC =  ['HEIC']
@@ -21,7 +22,10 @@ CSV_ATTR   = ["Make", "Model", "LensModel",
               "WhiteBalance",
               "DateTimeOriginal", "OffsetTime",
               "file_path"]
+DEFAULT_MINI = 'foto32.png'
 
+SAVE_REP = True
+SAVE_CSV = True
 
 def prinLog(caption, error=''):
     curDay = datetime.now()
@@ -107,7 +111,6 @@ def getFiles(startDir , listresult):
                   exifdate = piexif.load(image.info["exif"], key_is_name=True) 
                   for k in exifdate:
                      exifdate[k] = cast(exifdate.get(k)) 
-                  
             else:
                im = Image.open(l.path)
                if im._getexif() != None:
@@ -228,20 +231,70 @@ def parseGpsData(d):
    if (latitude == None or longitude == None):
       return False
    else:
-      return {"file" : d.get("file_path"),
-            #   "latitude" : latitude ,
-              "latitudeDeg" : dm_to_deg(latitude) ,
-            #   "longitude" : longitude,   
-              "longitudeDeg" : dm_to_deg(longitude)   
+      return {"foto" : d.get("file_path"),
+              "lat" : dm_to_deg(latitude) ,
+              "lon" : dm_to_deg(longitude) ,
+              "o":  d.get("Orientation")
       }
 
-def viewbrouser(d):    
-   return d.get("file_path")[-4::].upper().lstrip('.') in FILE_JPG
+def viewbrouser(d): 
+   return True   
+   # return d.get("file_path")[-4::].upper().lstrip('.') in FILE_JPG
 
 def pathDelStartDir(d,startDir):  
    result = d
-   tmpPath = d.get("file")  
-   result["file"] = tmpPath.replace(startDir,'..')
+   tmpPath = d.get("foto")  
+   result["foto"] = tmpPath.replace(startDir,'..')
+   tmpPath = d.get("mini")  
+   result["mini"] = tmpPath.replace(startDir,'..')
+   return result
+
+def creCopyMini(idx_data,copyDir): 
+   idx, d = idx_data
+   result = d
+   filepath = d.get("foto")
+   orient =  d.get("o")
+   copyName =  f'{idx}.png'
+   copyfile = os.path.join(copyDir,copyName)
+   try:
+      if filepath[-4::].upper().lstrip('.') in FILE_HEIC:
+         imh = pillow_heif.open_heif(filepath)
+         im = Image.frombytes(
+               imh.mode,
+               imh.size,
+               imh.data,
+               "raw",
+         )      
+      else:
+         im = Image.open(filepath)
+      width, height = im.size
+      if orient == 3 :
+         xw = width / 80
+         nheight = int(height / xw) 
+         resized_image = im.resize((80, nheight))
+         resized_image = resized_image.rotate(180)
+      elif orient == 6 :    
+         xw = height / 80
+         nwidth= int(width / xw) 
+         resized_image = im.resize((nwidth, 80))
+         resized_image = resized_image.rotate(-90, expand = True )  
+      elif orient == 8 :    
+         xw = height / 80
+         nwidth= int(width / xw) 
+         resized_image = im.resize((nwidth, 80))
+         resized_image = resized_image.rotate(90, expand = True )  
+      else: 
+         xw = width / 80
+         nheight = int(height / xw) 
+         resized_image = im.resize((80, nheight))
+
+      resized_image.save(copyfile)
+
+   except Exception as e:
+      prinLog(f'ERROR Ошибка создания миниатюры файла {filepath}', e)   
+      copyfile = os.path.join(copyDir,DEFAULT_MINI) 
+
+   result["mini"] = copyfile
    return result
 
 def copylog(fileSrc,fileDst):
@@ -257,10 +310,13 @@ if len(sys.argv) > 0 :
 resultDir = os.path.join(startDir,'FotoInfo')
 resultDirRep = os.path.join(resultDir,'Rep')
 resultDirResult = os.path.join(resultDir,'Result')
+resultDirSrc = os.path.join(resultDir,'src')
+resultDirJs = os.path.join(resultDir,'js')
+resultDirStyle = os.path.join(resultDir,'styles')
 fileData = 'result.json' 
 fileScript = 'resultMap.js' 
 
-for tmpDir in [resultDir,resultDirRep,resultDirResult]:
+for tmpDir in [resultDir,resultDirRep,resultDirResult,resultDirSrc, resultDirJs, resultDirStyle]:
   if not os.path.isdir(tmpDir):
     prinLog(f'Создаем каталог {tmpDir}') 
     os.mkdir(tmpDir)
@@ -279,7 +335,8 @@ prinLog(f'Время выполнения сканирования {dur_time} с
 pathfiledata =  os.path.join(resultDirResult,fileData)
 saveDataJson(pathfiledata,listfile)
 tmpFile =  os.path.join(resultDirResult,"result.csv")
-saveDataCsv(tmpFile, listfile, CSV_ATTR)
+if SAVE_CSV:  
+  saveDataCsv(tmpFile, listfile, CSV_ATTR)
 
 #Чтение из файла, для анализа
 
@@ -287,53 +344,59 @@ listfile = loadDataJson(pathfiledata)
 
 #Отчеты
 
-repList = repAttr(listfile, 'FocalLength_str',0)
-tmpFile =  os.path.join(resultDirRep,"rep_FocalLength.csv")
-saveDataCsvl(tmpFile, repList, ['model','FocalLength','cnt'])
+if SAVE_REP:  
 
-repList = repAttr(listfile, 'FNumber_str',0)
-tmpFile =  os.path.join(resultDirRep,"rep_FNumber.csv")
-saveDataCsvl(tmpFile, repList, ['model','FNumber','cnt'])
+    repList = repAttr(listfile, 'FocalLength_str',0)
+    tmpFile =  os.path.join(resultDirRep,"rep_FocalLength.csv")
+    saveDataCsvl(tmpFile, repList, ['model','FocalLength','cnt'])
 
-repList = repAttr(listfile, 'ExposureTime_str',0)
-tmpFile =  os.path.join(resultDirRep,"rep_ExposureTime.csv")
-saveDataCsvl(tmpFile, repList, ['model','ExposureTime','cnt'])
+    repList = repAttr(listfile, 'FNumber_str',0)
+    tmpFile =  os.path.join(resultDirRep,"rep_FNumber.csv")
+    saveDataCsvl(tmpFile, repList, ['model','FNumber','cnt'])
 
-repList = repAttr(listfile, 'ISOSpeedRatings_str',0)
-tmpFile =  os.path.join(resultDirRep,"rep_ISO.csv")
-saveDataCsvl(tmpFile, repList, ['model','ISO','cnt'])
+    repList = repAttr(listfile, 'ExposureTime_str',0)
+    tmpFile =  os.path.join(resultDirRep,"rep_ExposureTime.csv")
+    saveDataCsvl(tmpFile, repList, ['model','ExposureTime','cnt'])
+
+    repList = repAttr(listfile, 'ISOSpeedRatings_str',0)
+    tmpFile =  os.path.join(resultDirRep,"rep_ISO.csv")
+    saveDataCsvl(tmpFile, repList, ['model','ISO','cnt'])
 
 #Данные для карты
 
 prinLog(f'Формирование данных для карты') 
 listGpsData = list(map(lambda x: parseGpsData(x), filter(lambda x: parseGpsData(x) and viewbrouser(x)
  ,listfile)))
-listGpsData = list(map(lambda x: pathDelStartDir(x,startDir), listGpsData))
 
 prinLog(f'Кол-во фото с координатами {len(listGpsData)}') 
+
+# Создаю миниатюры
+prinLog(f'Создаем миниатюры в  {resultDirSrc}') 
+listGpsData = list(map(lambda x: creCopyMini(x,resultDirSrc), enumerate(listGpsData))) 
+
+# Оставляю относительный путь директории назначения
+listGpsData = list(map(lambda x: pathDelStartDir(x,startDir), listGpsData))
 tmpFile =  os.path.join(resultDirResult,fileScript)
 saveDataJsonJs(tmpFile, listGpsData)  
 
 #Копируем файлы для запуска карты в resultDir
-for sourceDir in ['js','src','styles']:
-  tmpDir = os.path.join(resultDir,sourceDir)
-  if not os.path.isdir(tmpDir):
-    prinLog(f'Создаем каталог {tmpDir}') 
-    os.mkdir(tmpDir)
-
 fileSrc = os.path.join('js','editMappUtl.js')
-fileDst = os.path.join(resultDir,'js')
-copylog(fileSrc,fileDst)
-fileSrc = os.path.join('js','map.js')
-copylog(fileSrc,fileDst)
+copylog(fileSrc,resultDirJs)
 
-fileSrc = os.path.join('src','foto32.png')
-fileDst = os.path.join(resultDir,'src')
-copylog(fileSrc,fileDst)
+fileSrc = os.path.join('js','map.js')
+copylog(fileSrc,resultDirJs)
+
+fileSrc = os.path.join('js','layers.js')
+copylog(fileSrc,resultDirJs)
+
+fileSrc = os.path.join('js','maptrack.js')
+copylog(fileSrc,resultDirResult)
+
+fileSrc = os.path.join('src',DEFAULT_MINI)
+copylog(fileSrc,resultDirSrc)
 
 fileSrc = os.path.join('styles','styles.css')
-fileDst = os.path.join(resultDir,'styles')
-copylog(fileSrc,fileDst)
+copylog(fileSrc,resultDirStyle)
 
 fileSrc = os.path.join('.','map.html')
 copylog(fileSrc,resultDir)
